@@ -114,5 +114,74 @@ describe Whatsapp::IncomingMessageWhatsappCloudService do
         expect(whatsapp_channel.inbox.messages.count).to eq(0)
       end
     end
+
+    context 'when message contains referral data' do
+      let(:referral_params) do
+        {
+          phone_number: whatsapp_channel.phone_number,
+          object: 'whatsapp_business_account',
+          entry: [{
+            changes: [{
+              value: {
+                contacts: [{ profile: { name: 'Test User' }, wa_id: '1234567890' }],
+                messages: [{
+                  from: '1234567890',
+                  id: 'wamid.referral_message_id',
+                  timestamp: '1678886400',
+                  type: 'text',
+                  text: { body: 'I saw this ad and I am interested!' },
+                  referral: {
+                    source_url: 'https://fb.me/sample_ad_link',
+                    source_id: 'SAMPLE_AD_ID',
+                    source_type: 'ad',
+                    headline: 'Check out this Great Product!',
+                    body: 'Click here to learn more about our amazing product.',
+                    media_type: 'image',
+                    image_url: 'https://example.com/ad_image.png',
+                    video_url: nil,
+                    thumbnail_url: 'https://example.com/ad_thumbnail.png',
+                    ctwa_clid: 'SAMPLE_CTWA_CLID'
+                  }
+                }]
+              }
+            }]
+          }]
+        }.with_indifferent_access
+      end
+
+      it 'creates message with referral data in additional_attributes and includes it in webhook_data' do
+        described_class.new(inbox: whatsapp_channel.inbox, params: referral_params).perform
+
+        expect(whatsapp_channel.inbox.conversations.count).to eq(1)
+        expect(whatsapp_channel.inbox.messages.count).to eq(1)
+
+        message = whatsapp_channel.inbox.messages.first
+        expect(message).not_to be_nil
+        expect(message.content).to eq('I saw this ad and I am interested!')
+        expect(message.additional_attributes).not_to be_nil
+
+        ad_referral_data = message.additional_attributes['ad_referral']
+        expect(ad_referral_data).not_to be_nil
+        expect(ad_referral_data['source_url']).to eq('https://fb.me/sample_ad_link')
+        expect(ad_referral_data['source_id']).to eq('SAMPLE_AD_ID')
+        expect(ad_referral_data['source_type']).to eq('ad')
+        expect(ad_referral_data['headline']).to eq('Check out this Great Product!')
+        expect(ad_referral_data['body']).to eq('Click here to learn more about our amazing product.')
+        expect(ad_referral_data['media_type']).to eq('image')
+        expect(ad_referral_data['image_url']).to eq('https://example.com/ad_image.png')
+        expect(ad_referral_data['video_url']).to be_nil
+        expect(ad_referral_data['thumbnail_url']).to eq('https://example.com/ad_thumbnail.png')
+        expect(ad_referral_data['ctwa_clid']).to eq('SAMPLE_CTWA_CLID')
+
+        # Verify webhook_data
+        webhook_additional_attrs = message.webhook_data[:additional_attributes]
+        expect(webhook_additional_attrs).not_to be_nil
+        webhook_ad_referral_data = webhook_additional_attrs['ad_referral']
+        expect(webhook_ad_referral_data).not_to be_nil
+        expect(webhook_ad_referral_data['source_url']).to eq('https://fb.me/sample_ad_link')
+        expect(webhook_ad_referral_data['source_id']).to eq('SAMPLE_AD_ID')
+        expect(webhook_ad_referral_data['headline']).to eq('Check out this Great Product!')
+      end
+    end
   end
 end

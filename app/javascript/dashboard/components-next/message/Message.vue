@@ -512,6 +512,21 @@ provideMessageContext({
         }"
         @contextmenu="openContextMenu($event)"
       >
+        <!-- Ad Thumbnail Display -->
+        <div
+          v-if="props.additionalAttributes && props.additionalAttributes.ad_referral && props.additionalAttributes.ad_referral.thumbnail_url"
+          class="ad-thumbnail-wrapper"
+          style="margin-bottom: 8px; text-align: left;"
+        >
+          <p style="font-size: 0.75rem; color: #888; margin-bottom: 4px; font-style: italic;">
+            Message from Ad:
+          </p>
+          <img
+            :src="props.additionalAttributes.ad_referral.thumbnail_url"
+            alt="Ad Thumbnail"
+            style="max-width: 200px; max-height: 120px; border-radius: 6px; border: 1px solid #ddd; object-fit: cover;"
+          />
+        </div>
         <Component :is="componentToRender" />
       </div>
       <MessageError

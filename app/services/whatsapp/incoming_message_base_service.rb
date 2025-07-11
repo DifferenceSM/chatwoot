@@ -150,6 +150,34 @@ class Whatsapp::IncomingMessageBaseService
       source_id: message[:id].to_s,
       in_reply_to_external_id: @in_reply_to_external_id
     )
+    # Add Meta Ad Referral data if present
+    referral_data = @processed_params.dig(:messages, 0, :referral)
+    if referral_data.present?
+      @message.additional_attributes ||= {}
+      @message.additional_attributes[:ad_referral] ||= {}
+      # Ensure :ad_referral is a hash, even if it was something else before
+      unless @message.additional_attributes[:ad_referral].is_a?(Hash)
+        @message.additional_attributes[:ad_referral] = {}
+      end
+
+      @message.additional_attributes[:ad_referral].merge!({
+        # Fields from Meta's referral object
+        source_url: referral_data[:source_url],
+        source_id: referral_data[:source_id],
+        source_type: referral_data[:source_type],
+        headline: referral_data[:headline],
+        body: referral_data[:body],
+        # Meta calls it media_type, user's example had ad_media_type. Standardizing to media_type from Meta.
+        media_type: referral_data[:media_type],
+        image_url: referral_data[:image_url],
+        video_url: referral_data[:video_url],
+        thumbnail_url: referral_data[:thumbnail_url],
+        ctwa_clid: referral_data[:ctwa_clid]
+        # The user's example ad_referral also had ad_received_at.
+        # This is not directly in Meta's referral object.
+        # It could be added from message.created_at or similar if needed, but keeping it to referral_data for now.
+      })
+    end
   end
 
   def attach_contact(contact)
